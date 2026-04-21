@@ -1,0 +1,8 @@
+{
+  "enabledMcpjsonServers": ["alpaca"],
+  "permissions": {
+    "allow": [
+      "mcp__alpaca__*"
+    ]
+  }
+}
