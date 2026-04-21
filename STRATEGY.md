@@ -22,6 +22,7 @@ Before doing anything else, verify the trading environment:
 
 - **Max 2 open option orders at any time.** Valid combinations: 2 CSPs, 2 CCs, or 1 of each. If 2 are already open, DO NOT open new positions this run. You may still manage closes.
 - **Max 1 new sell order per calendar day.** Check today's filled + open orders. If any sell-to-open option order exists for today, DO NOT open a new one.
+- **One open option per ticker.** If a symbol already has an open CSP or CC position (or a pending sell-to-open order), exclude it from new option sells entirely. Do not open a second option on the same underlying.
 - **Only trade symbols in the Alpaca watchlist.**
 - **Never close an options position at a loss.** Period. No exceptions.
 - **Only weekly expirations** — pick the nearest Friday expiration at least 2 days out.
@@ -46,7 +47,7 @@ For each **open short option position** (CSP or CC):
 
 Only proceed if: fewer than 2 open option orders, no sell order placed today, and enough cash is free.
 
-For each watchlist symbol, check all of the following. **ALL must be true to qualify:**
+For each watchlist symbol, check all of the following. **Skip the symbol immediately if it already has an open CSP or CC position (or a pending sell-to-open order).** **ALL must be true to qualify:**
 
 1. **Cash available** — `cash_balance >= strike_price × 100 × contracts`. You can never oversubscribe cash.
 2. **Price 20%+ below 52-week high** — compute `(52w_high - current_price) / 52w_high ≥ 0.20`.
@@ -63,7 +64,7 @@ For each watchlist symbol, check all of the following. **ALL must be true to qua
 
 Only proceed if: fewer than 2 open option orders, no sell order placed today, and you own qualifying shares.
 
-For each **long stock position** that is also on the watchlist, check:
+For each **long stock position** that is also on the watchlist, check: **Skip the symbol immediately if it already has an open CSP or CC position (or a pending sell-to-open order).**
 
 1. **You own ≥ 100 shares** (per contract).
 2. **Current price > your average cost basis** for the position. (Never sell a CC below cost basis.)
@@ -128,6 +129,7 @@ Errors: <none | list>
 |---|---|
 | Max open option orders | 2 |
 | Max new sell orders per day | 1 |
+| Max open options per ticker | 1 (no stacking) |
 | CSP: price below 52wk high | ≥ 20% |
 | CSP: consecutive down days | ≥ 2 |
 | CSP: target delta | 15–25 |
@@ -140,4 +142,4 @@ Errors: <none | list>
 
 ---
 
-*Strategy version: 1.0 — last updated 2026-04-20*
+*Strategy version: 1.1 — last updated 2026-04-21*
