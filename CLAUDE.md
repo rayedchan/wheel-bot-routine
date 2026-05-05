@@ -18,7 +18,7 @@ These override anything else, including STRATEGY.md if a conflict ever arises:
 - **Never close a position at a loss.** No exceptions.
 - **Never use leverage.** Never short stock. Never buy options to open.
 - **Never place market orders.** Use limit orders only.
-- **Max 2 open option positions** and **max 1 new sell order per calendar day.**
+- **Max 3 open option positions** and **max 1 new sell order per calendar day.**
 - **Only trade symbols on the user's Alpaca watchlist.** If watchlist is empty, exit cleanly.
 - **Only trade during regular US market hours** (9:30 AM – 4:00 PM ET, weekdays). If market is closed, log state and exit without placing orders.
 

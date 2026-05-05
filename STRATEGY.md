@@ -20,7 +20,7 @@ Before doing anything else, verify the trading environment:
 
 ## 2. Hard trading rules (NEVER violate)
 
-- **Max 2 open option orders at any time.** Valid combinations: 2 CSPs, 2 CCs, or 1 of each. If 2 are already open, DO NOT open new positions this run. You may still manage closes.
+- **Max 3 open option orders at any time.** Valid combinations: any mix of CSPs and CCs up to 3 total. If 3 are already open, DO NOT open new positions this run. You may still manage closes.
 - **Max 1 new sell order per calendar day.** Check today's filled + open orders. If any sell-to-open option order exists for today, DO NOT open a new one.
 - **One open option per ticker.** If a symbol already has an open CSP or CC position (or a pending sell-to-open order), exclude it from new option sells entirely. Do not open a second option on the same underlying.
 - **Only trade symbols in the Alpaca watchlist.**
@@ -39,13 +39,13 @@ For each **open short option position** (CSP or CC):
   - **Same-day rule:** Position opened today AND P/L ≥ 50% profit.
   - **Time rule:** P/L ≥ 80% profit AND at least 2 calendar days remaining until expiration.
 - To close, submit a **buy-to-close limit order** at the current ask (or slightly above mid). Use a reasonable limit — do not chase.
-- **Never close a position that is currently at a loss.** If you close a position this run, that counts toward the 2-open-order limit being freed up, but does NOT consume the daily sell-order quota.
+- **Never close a position that is currently at a loss.** If you close a position this run, that counts toward the 3-open-order limit being freed up, but does NOT consume the daily sell-order quota.
 
 ---
 
 ## 4. Evaluate new cash-secured put (CSP) opportunities
 
-Only proceed if: fewer than 2 open option orders, no sell order placed today, and enough cash is free.
+Only proceed if: fewer than 3 open option orders, no sell order placed today, and enough cash is free.
 
 For each watchlist symbol, check all of the following. **Skip the symbol immediately if it already has an open CSP or CC position (or a pending sell-to-open order).** **ALL must be true to qualify:**
 
@@ -62,7 +62,7 @@ For each watchlist symbol, check all of the following. **Skip the symbol immedia
 
 ## 5. Evaluate new covered call (CC) opportunities
 
-Only proceed if: fewer than 2 open option orders, no sell order placed today, and you own qualifying shares.
+Only proceed if: fewer than 3 open option orders, no sell order placed today, and you own qualifying shares.
 
 For each **long stock position** that is also on the watchlist, check: **Skip the symbol immediately if it already has an open CSP or CC position (or a pending sell-to-open order).**
 
@@ -94,7 +94,7 @@ At the end of every run, print a structured summary to stdout:
 ```
 === WHEELING BOT RUN: <timestamp ET> ===
 Account: cash=$X, buying_power=$Y
-Open option orders: N/2
+Open option orders: N/3
 Sell orders placed today: N/1
 Watchlist: [AAPL, MSFT, ...]
 
@@ -127,7 +127,7 @@ Errors: <none | list>
 
 | Rule | Value |
 |---|---|
-| Max open option orders | 2 |
+| Max open option orders | 3 |
 | Max new sell orders per day | 1 |
 | Max open options per ticker | 1 (no stacking) |
 | CSP: price below 52wk high | ≥ 20% |
@@ -142,4 +142,4 @@ Errors: <none | list>
 
 ---
 
-*Strategy version: 1.1 — last updated 2026-04-21*
+*Strategy version: 1.2 — last updated 2026-05-05*
