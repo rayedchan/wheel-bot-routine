@@ -61,7 +61,7 @@ Trading logic, thresholds, and rules for live runs are provided in the routine-l
 ### Tool usage
 - **Robinhood MCP** — all account queries, position reads, order placement, and order management.
 - **Alpaca MCP** — market data **only**: stock quotes, bars, option chains, option snapshots. Do NOT place any orders through Alpaca in live mode.
-- Required env vars: `RH_USERNAME`, `RH_PASSWORD` (or equivalent Robinhood auth vars) and `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` — supplied via Routine secrets, never hardcoded.
+- Required env vars: `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` — supplied via Routine secrets, never hardcoded. The Robinhood MCP connection is configured at the Routine connector level and requires no env vars.
 - Every Robinhood order MUST be reviewed (use `review_equity_order` / equivalent) before submission.
 
 ### Safety rails (live)
