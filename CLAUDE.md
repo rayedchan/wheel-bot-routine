@@ -2,50 +2,98 @@
 
 ## What this repo is
 
-An autonomous **Alpaca paper-trading options bot** executing a wheeling strategy (cash-secured puts + covered calls). This repo is cloned fresh by a Claude Code Routine on Anthropic's cloud infrastructure 3× per weekday (11 AM, 1 PM, 3 PM ET) and each run is completely stateless.
+An autonomous options bot executing a wheeling strategy (cash-secured puts + covered calls). It operates in two modes:
+
+- **Paper trading** — uses Alpaca for everything (account, market data, orders). Governed by `STRATEGY.md`.
+- **Live trading** — uses **Robinhood** for account, positions, and orders; uses **Alpaca only for market data** (quotes, bars, option chains). Governed by `LIVE_STRATEGY.md`.
+
+This repo is cloned fresh by a Claude Code Routine on Anthropic's cloud infrastructure 3× per weekday (11 AM, 1 PM, 3 PM ET) and each run is completely stateless.
 
 ## First thing to do on every run
 
-1. **Read `STRATEGY.md` in full.** It is the source of truth for all trading logic, thresholds, and rules. Do not improvise — follow it exactly.
-2. Verify the `alpaca` MCP server is connected (listed in `.mcp.json`). If not connected, log error and exit.
-3. Confirm account is in **paper trading mode** before any trade action.
+1. **Determine trading mode** — check the `TRADING_MODE` env var. If `paper`, follow the paper trading flow below. If `live`, follow the live trading flow below. If unset or unrecognized, STOP and log a SAFETY ABORT.
+2. Verify the required MCP servers are connected (see mode-specific sections below). If any required server is missing, log error and exit.
+3. Read the relevant strategy file in full before taking any action.
 
-## Non-negotiable safety rails
+---
 
-These override anything else, including STRATEGY.md if a conflict ever arises:
+## Paper trading mode (`TRADING_MODE=paper`)
 
-- **PAPER TRADING ONLY.** If `ALPACA_PAPER_TRADE` is not `true` or the account is detected as live, STOP immediately and log a SAFETY ABORT.
+### Strategy file
+Read `STRATEGY.md` in full. It is the source of truth for all paper trading logic. Do not improvise.
+
+### Pre-flight checks
+1. Verify the `alpaca` MCP server is connected.
+2. Confirm the Alpaca account is in **paper trading mode**. If detected as live, STOP immediately and log a SAFETY ABORT.
+
+### Tool usage
+- Use the `alpaca` MCP server tools for all account, market data, and order operations.
+- Required env vars: `ALPACA_API_KEY`, `ALPACA_SECRET_KEY`, `ALPACA_PAPER_TRADE=true` — supplied via Routine secrets, never hardcoded.
+- Every order MUST include a unique `client_order_id` of the form `wheel-YYYYMMDD-HHMM-<symbol>` for idempotency.
+
+### Safety rails (paper)
+- **PAPER TRADING ONLY.** If `ALPACA_PAPER_TRADE` is not `true` or the account is detected as live, STOP immediately.
 - **Never close a position at a loss.** No exceptions.
 - **Never use leverage.** Never short stock. Never buy options to open.
 - **Never place market orders.** Use limit orders only.
 - **Max 3 open option positions** and **max 1 new sell order per calendar day.**
 - **Only trade symbols on the user's Alpaca watchlist.** If watchlist is empty, exit cleanly.
-- **Only trade during regular US market hours** (9:30 AM – 4:00 PM ET, weekdays). If market is closed, log state and exit without placing orders.
+- **Only trade during regular US market hours** (9:30 AM – 4:00 PM ET, weekdays).
 
-## Tool usage
-
-- Use the `alpaca` MCP server tools exclusively for all account, market data, and order operations.
-- Required env vars: `ALPACA_API_KEY`, `ALPACA_SECRET_KEY`, `ALPACA_PAPER_TRADE=true` — supplied via Routine secrets, never hardcoded.
-- Every order MUST include a unique `client_order_id` of the form `wheel-YYYYMMDD-HHMM-<symbol>` for idempotency.
-
-## How to reason about a run
-
-Walk through this order, every time:
-
+### How to reason about a paper run
 1. Pre-flight checks (market open, paper mode, account info, watchlist, positions, orders)
 2. **Manage existing positions first** — close any that meet profit-taking rules in STRATEGY.md
 3. **Evaluate new opportunities** — CSPs and CCs per STRATEGY.md conditions
 4. Place at most ONE new sell-to-open order per run (and per day)
 5. Print the structured end-of-run summary specified in STRATEGY.md
 
+---
+
+## Live trading mode (`TRADING_MODE=live`)
+
+### Strategy file
+Read `LIVE_STRATEGY.md` in full. It is the source of truth for all live trading logic. Do not improvise.
+
+### Pre-flight checks
+1. Verify both the `robinhood` MCP server and the `alpaca` MCP server are connected.
+2. Confirm Robinhood account details look correct (non-zero buying power, expected account type).
+3. Fetch the watchlist from Robinhood. If empty, log and exit.
+
+### Tool usage
+- **Robinhood MCP** — all account queries, position reads, order placement, and order management.
+- **Alpaca MCP** — market data **only**: stock quotes, bars, option chains, option snapshots. Do NOT place any orders through Alpaca in live mode.
+- Required env vars: `RH_USERNAME`, `RH_PASSWORD` (or equivalent Robinhood auth vars) and `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` — supplied via Routine secrets, never hardcoded.
+- Every Robinhood order MUST be reviewed (use `review_equity_order` / equivalent) before submission.
+
+### Safety rails (live)
+- **REAL MONEY.** Default to inaction when uncertain. A skipped run costs nothing; a bad trade costs real money.
+- **Never close a position at a loss.** No exceptions.
+- **Never use leverage.** Never short stock. Never buy options to open.
+- **Never place market orders.** Use limit orders only.
+- **Max 3 open option positions** and **max 1 new sell order per calendar day.**
+- **Only trade symbols on the user's Robinhood watchlist.** If watchlist is empty, exit cleanly.
+- **Only trade during regular US market hours** (9:30 AM – 4:00 PM ET, weekdays).
+- Do NOT use Alpaca for any order placement or account mutations in live mode.
+
+### How to reason about a live run
+1. Pre-flight checks (market open, Robinhood account info, watchlist, positions, orders)
+2. Fetch all market data needed (quotes, option chains) via Alpaca MCP
+3. **Manage existing positions first** — close any that meet profit-taking rules in LIVE_STRATEGY.md
+4. **Evaluate new opportunities** — CSPs and CCs per LIVE_STRATEGY.md conditions
+5. Place at most ONE new sell-to-open order per run (and per day) via Robinhood MCP
+6. Print the structured end-of-run summary specified in LIVE_STRATEGY.md
+
+---
+
 ## When in doubt
 
-If a condition in STRATEGY.md is ambiguous, if market data looks wrong, or if anything unexpected shows up (negative buying power, unknown positions, stale quotes) — **do nothing and log the concern**. A skipped run is always safer than an incorrect trade.
+If a strategy file condition is ambiguous, if market data looks wrong, or if anything unexpected shows up (negative buying power, unknown positions, stale quotes) — **do nothing and log the concern**. A skipped run is always safer than an incorrect trade.
 
 ## Do NOT
 
 - Do not modify this repo's files during a run.
 - Do not push branches or open PRs — this routine is read-only on the repo.
-- Do not use web search or external APIs beyond the Alpaca MCP server.
+- Do not use web search or external APIs beyond the MCP servers listed above.
 - Do not retry failed orders more than once (5-second backoff). Failed twice = skip.
-- Do not be "creative" with the strategy. Follow STRATEGY.md exactly.
+- Do not be "creative" with the strategy. Follow the relevant strategy file exactly.
+- Do not use Alpaca for order placement or account mutations during live trading.
