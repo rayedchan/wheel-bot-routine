@@ -11,13 +11,13 @@ This repo is cloned fresh by a Claude Code Routine on Anthropic's cloud infrastr
 
 ## First thing to do on every run
 
-1. **Determine trading mode** — check the `TRADING_MODE` env var. If `paper`, follow the paper trading flow below. If `live`, follow the live trading flow below. If unset or unrecognized, STOP and log a SAFETY ABORT.
-2. Verify the required MCP servers are connected (see mode-specific sections below). If any required server is missing, log error and exit.
+1. **Determine trading mode** — check whether the Robinhood MCP server is connected. If it is, this is a **live trading run**. If it is not, this is a **paper trading run** using Alpaca.
+2. Verify the `alpaca` MCP server is connected (required in both modes). If not connected, log error and exit.
 3. For paper mode, read `STRATEGY.md` in full before taking any action. For live mode, trading logic is provided in the routine-level prompt.
 
 ---
 
-## Paper trading mode (`TRADING_MODE=paper`)
+## Paper trading mode (Robinhood MCP not connected)
 
 ### Strategy file
 Read `STRATEGY.md` in full. It is the source of truth for all paper trading logic. Do not improvise.
@@ -49,13 +49,12 @@ Read `STRATEGY.md` in full. It is the source of truth for all paper trading logi
 
 ---
 
-## Live trading mode (`TRADING_MODE=live`)
+## Live trading mode (Robinhood MCP connected)
 
 Trading logic, thresholds, and rules for live runs are provided in the routine-level prompt at invocation time. Follow those instructions exactly — do not improvise.
 
 ### Pre-flight checks
-1. Verify both the `robinhood` MCP server and the `alpaca` MCP server are connected.
-2. Confirm Robinhood account details look correct (non-zero buying power, expected account type).
+1. Confirm Robinhood account details look correct (non-zero buying power, expected account type).
 3. Fetch the watchlist from Robinhood. If empty, log and exit.
 
 ### Tool usage
