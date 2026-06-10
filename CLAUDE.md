@@ -5,7 +5,7 @@
 An autonomous options bot executing a wheeling strategy (cash-secured puts + covered calls). It operates in two modes:
 
 - **Paper trading** — uses Alpaca for everything (account, market data, orders). Governed by `STRATEGY.md`.
-- **Live trading** — uses **Robinhood** for account, positions, and orders; uses **Alpaca only for market data** (quotes, bars, option chains). Governed by `LIVE_STRATEGY.md`.
+- **Live trading** — uses **Robinhood** for account, positions, and orders; uses **Alpaca only for market data** (quotes, bars, option chains). Trading logic and thresholds are provided in the routine-level prompt — there is no strategy file for live mode.
 
 This repo is cloned fresh by a Claude Code Routine on Anthropic's cloud infrastructure 3× per weekday (11 AM, 1 PM, 3 PM ET) and each run is completely stateless.
 
@@ -13,7 +13,7 @@ This repo is cloned fresh by a Claude Code Routine on Anthropic's cloud infrastr
 
 1. **Determine trading mode** — check the `TRADING_MODE` env var. If `paper`, follow the paper trading flow below. If `live`, follow the live trading flow below. If unset or unrecognized, STOP and log a SAFETY ABORT.
 2. Verify the required MCP servers are connected (see mode-specific sections below). If any required server is missing, log error and exit.
-3. Read the relevant strategy file in full before taking any action.
+3. For paper mode, read `STRATEGY.md` in full before taking any action. For live mode, trading logic is provided in the routine-level prompt.
 
 ---
 
@@ -51,8 +51,7 @@ Read `STRATEGY.md` in full. It is the source of truth for all paper trading logi
 
 ## Live trading mode (`TRADING_MODE=live`)
 
-### Strategy file
-Read `LIVE_STRATEGY.md` in full. It is the source of truth for all live trading logic. Do not improvise.
+Trading logic, thresholds, and rules for live runs are provided in the routine-level prompt at invocation time. Follow those instructions exactly — do not improvise.
 
 ### Pre-flight checks
 1. Verify both the `robinhood` MCP server and the `alpaca` MCP server are connected.
@@ -78,16 +77,16 @@ Read `LIVE_STRATEGY.md` in full. It is the source of truth for all live trading 
 ### How to reason about a live run
 1. Pre-flight checks (market open, Robinhood account info, watchlist, positions, orders)
 2. Fetch all market data needed (quotes, option chains) via Alpaca MCP
-3. **Manage existing positions first** — close any that meet profit-taking rules in LIVE_STRATEGY.md
-4. **Evaluate new opportunities** — CSPs and CCs per LIVE_STRATEGY.md conditions
+3. **Manage existing positions first** — close any that meet profit-taking rules per the routine-level prompt
+4. **Evaluate new opportunities** — per the routine-level prompt
 5. Place at most ONE new sell-to-open order per run (and per day) via Robinhood MCP
-6. Print the structured end-of-run summary specified in LIVE_STRATEGY.md
+6. Print a structured end-of-run summary
 
 ---
 
 ## When in doubt
 
-If a strategy file condition is ambiguous, if market data looks wrong, or if anything unexpected shows up (negative buying power, unknown positions, stale quotes) — **do nothing and log the concern**. A skipped run is always safer than an incorrect trade.
+If instructions are ambiguous, if market data looks wrong, or if anything unexpected shows up (negative buying power, unknown positions, stale quotes) — **do nothing and log the concern**. A skipped run is always safer than an incorrect trade.
 
 ## Do NOT
 
@@ -95,5 +94,5 @@ If a strategy file condition is ambiguous, if market data looks wrong, or if any
 - Do not push branches or open PRs — this routine is read-only on the repo.
 - Do not use web search or external APIs beyond the MCP servers listed above.
 - Do not retry failed orders more than once (5-second backoff). Failed twice = skip.
-- Do not be "creative" with the strategy. Follow the relevant strategy file exactly.
+- Do not be "creative" with the strategy. For paper mode, follow `STRATEGY.md` exactly. For live mode, follow the routine-level prompt exactly.
 - Do not use Alpaca for order placement or account mutations during live trading.
